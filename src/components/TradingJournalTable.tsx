@@ -43,41 +43,46 @@ export function TradingJournalTable({ trades, onDelete, onRequestEdit, loading }
               <TableRow>
                 <TableHead className="w-[100px]">일자</TableHead>
                 <TableHead className="w-[80px]">유형</TableHead>
-                <TableHead className="text-right">수량(랏수)</TableHead>
-                <TableHead className="text-right">손익</TableHead>
-                <TableHead className="text-right">수수료</TableHead>
+                <TableHead className="text-right">수량 (랏수)</TableHead>
+                <TableHead className="text-right">증거금 ($)</TableHead>
+                <TableHead className="text-right">리스크 (%)</TableHead>
+                <TableHead className="text-right">구간 수 (N)</TableHead>
+                <TableHead>장 선택</TableHead>
+                <TableHead className="text-right">진입 KTR</TableHead>
+                <TableHead className="text-right">손익 ($)</TableHead>
                 <TableHead>전략</TableHead>
                 <TableHead className="w-[160px] text-right">작업</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {trades.map((t, index) => {
-                const pnlPositive = (t.profitLoss ?? 0) >= 0;
+                const isProfitable = t.profitLoss > 0;
                 return (
-                  <TableRow key={t.id ?? `trade-${index}`} className="hover:bg-muted/40">
-                    <TableCell>{t.date ?? "-"}</TableCell>
+                  <TableRow key={t.id || index}>
+                    <TableCell>{t.date}</TableCell>
                     <TableCell>
-                      <Badge variant={t.type === "매수" ? "default" : "secondary"}>{t.type ?? "-"}</Badge>
+                      <Badge variant={t.type === "매수" ? "default" : "secondary"}>
+                        {t.type}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="text-right">{t.quantity?.toLocaleString() ?? "-"}</TableCell>
-                    <TableCell className={`text-right font-medium ${pnlPositive ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {t.profitLoss?.toLocaleString() ?? "-"}
-                    </TableCell>
-                    <TableCell className="text-right">{t.fee?.toLocaleString() ?? "-"}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {pnlPositive ? (
-                          <TrendingUp className="w-4 h-4 text-emerald-600" />
-                        ) : (
-                          <TrendingDown className="w-4 h-4 text-red-600" />
-                        )}
-                        <span className="truncate max-w-[200px]" title={t.strategy ?? "-"}>{t.strategy ?? "-"}</span>
-                      </div>
+                    <TableCell className="text-right">{t.quantity.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">${t.margin.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{t.risk}%</TableCell>
+                    <TableCell className="text-right">{t.sections}</TableCell>
+                    <TableCell>{t.session}</TableCell>
+                    <TableCell className="text-right">{t.entryKTR.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">
+                      <span className={isProfitable ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
+                        {isProfitable && "+"}${t.profitLoss.toFixed(2)}
+                      </span>
                     </TableCell>
                     <TableCell>
-                      <div className="flex justify-end gap-2">
+                      <span className="text-sm">{t.strategy || "-"}</span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2 justify-end">
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="icon"
                           onClick={() => setViewingChecklistTrade(t)}
                           title="체크리스트 보기"
