@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 
 export default defineConfig({
-  base: '/Goldtradingjournal/',  // ✅ 이 줄 추가 (GitHub Pages용)
+  // base 줄 삭제! Vercel은 루트 도메인 사용
   plugins: [react()],
   resolve: {
     extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
@@ -51,7 +51,7 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
-    outDir: 'dist',  // ✅ 'build' → 'dist'로 변경 (GitHub Actions와 맞춤)
+    outDir: 'dist',
   },
   server: {
     port: 3000,
