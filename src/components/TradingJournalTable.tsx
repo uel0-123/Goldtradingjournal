@@ -43,8 +43,6 @@ export function TradingJournalTable({ trades, onDelete, onRequestEdit, loading }
               <TableRow>
                 <TableHead className="w-[100px]">일자</TableHead>
                 <TableHead className="w-[80px]">유형</TableHead>
-                <TableHead className="text-right">진입가</TableHead>
-                <TableHead className="text-right">청산가</TableHead>
                 <TableHead className="text-right">수량</TableHead>
                 <TableHead className="text-right">손익</TableHead>
                 <TableHead className="text-right">수수료</TableHead>
@@ -54,20 +52,18 @@ export function TradingJournalTable({ trades, onDelete, onRequestEdit, loading }
             </TableHeader>
             <TableBody>
               {trades.map((t) => {
-                const pnlPositive = t.profitLoss >= 0;
+                const pnlPositive = (t.profitLoss ?? 0) >= 0;
                 return (
                   <TableRow key={t.id} className="hover:bg-muted/40">
-                    <TableCell>{t.date}</TableCell>
+                    <TableCell>{t.date ?? "-"}</TableCell>
                     <TableCell>
-                      <Badge variant={t.type === "매수" ? "default" : "secondary"}>{t.type}</Badge>
+                      <Badge variant={t.type === "LONG" ? "default" : "secondary"}>{t.type ?? "-"}</Badge>
                     </TableCell>
-                    <TableCell className="text-right">{t.entryPrice.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{t.exitPrice.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{t.quantity.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{t.quantity?.toLocaleString() ?? "-"}</TableCell>
                     <TableCell className={`text-right font-medium ${pnlPositive ? "text-emerald-600" : "text-red-600"}`}>
-                      {t.profitLoss.toLocaleString()}
+                      {t.profitLoss?.toLocaleString() ?? "-"}
                     </TableCell>
-                    <TableCell className="text-right">{t.fee.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{t.fee?.toLocaleString() ?? "-"}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {pnlPositive ? (
@@ -75,18 +71,33 @@ export function TradingJournalTable({ trades, onDelete, onRequestEdit, loading }
                         ) : (
                           <TrendingDown className="w-4 h-4 text-red-600" />
                         )}
-                        <span className="truncate max-w-[200px]" title={t.strategy}>{t.strategy}</span>
+                        <span className="truncate max-w-[200px]" title={t.strategy ?? "-"}>{t.strategy ?? "-"}</span>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
-                        <Button size="icon" variant="outline" onClick={() => setViewingChecklistTrade(t)} title="체크리스트 보기">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setViewingChecklistTrade(t)}
+                          title="체크리스트 보기"
+                        >
                           <ClipboardCheck className="w-4 h-4" />
                         </Button>
-                        <Button size="icon" variant="outline" onClick={() => handleEditClick(t)} title="수정">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleEditClick(t)}
+                          title="수정"
+                        >
                           <Pencil className="w-4 h-4" />
                         </Button>
-                        <Button size="icon" variant="destructive" onClick={() => setDeletingId(t.id)} title="삭제">
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => setDeletingId(t.id)}
+                          title="삭제"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -121,7 +132,7 @@ export function TradingJournalTable({ trades, onDelete, onRequestEdit, loading }
           </DialogHeader>
           {viewingChecklistTrade && (
             <div className="py-2">
-              <TradingRulesChecklist value={viewingChecklistTrade.checklist} readOnly />
+              <TradingRulesChecklist readonly value={viewingChecklistTrade.checklist} />
             </div>
           )}
         </DialogContent>
