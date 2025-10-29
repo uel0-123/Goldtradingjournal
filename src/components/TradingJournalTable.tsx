@@ -43,7 +43,7 @@ export function TradingJournalTable({ trades, onDelete, onRequestEdit, loading }
               <TableRow>
                 <TableHead className="w-[100px]">일자</TableHead>
                 <TableHead className="w-[80px]">유형</TableHead>
-                <TableHead className="text-right">수량</TableHead>
+                <TableHead className="text-right">수량(랏수)</TableHead>
                 <TableHead className="text-right">손익</TableHead>
                 <TableHead className="text-right">수수료</TableHead>
                 <TableHead>전략</TableHead>
@@ -51,16 +51,16 @@ export function TradingJournalTable({ trades, onDelete, onRequestEdit, loading }
               </TableRow>
             </TableHeader>
             <TableBody>
-              {trades.map((t) => {
+              {trades.map((t, index) => {
                 const pnlPositive = (t.profitLoss ?? 0) >= 0;
                 return (
-                  <TableRow key={t.id} className="hover:bg-muted/40">
+                  <TableRow key={t.id ?? `trade-${index}`} className="hover:bg-muted/40">
                     <TableCell>{t.date ?? "-"}</TableCell>
                     <TableCell>
-                      <Badge variant={t.type === "LONG" ? "default" : "secondary"}>{t.type ?? "-"}</Badge>
+                      <Badge variant={t.type === "매수" ? "default" : "secondary"}>{t.type ?? "-"}</Badge>
                     </TableCell>
                     <TableCell className="text-right">{t.quantity?.toLocaleString() ?? "-"}</TableCell>
-                    <TableCell className={`text-right font-medium ${pnlPositive ? "text-emerald-600" : "text-red-600"}`}>
+                    <TableCell className={`text-right font-medium ${pnlPositive ? 'text-emerald-600' : 'text-red-600'}`}>
                       {t.profitLoss?.toLocaleString() ?? "-"}
                     </TableCell>
                     <TableCell className="text-right">{t.fee?.toLocaleString() ?? "-"}</TableCell>
@@ -109,7 +109,6 @@ export function TradingJournalTable({ trades, onDelete, onRequestEdit, loading }
           </Table>
         </div>
       )}
-
       {/* Delete confirm */}
       <AlertDialog open={!!deletingId}>
         <AlertDialogContent>
@@ -123,7 +122,6 @@ export function TradingJournalTable({ trades, onDelete, onRequestEdit, loading }
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
       {/* Checklist viewer */}
       <Dialog open={!!viewingChecklistTrade} onOpenChange={(open) => !open && setViewingChecklistTrade(null)}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
