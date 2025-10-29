@@ -22,7 +22,8 @@ interface TradingJournalFormProps {
 const toNumber = (v: string) => (v === "" || isNaN(Number(v)) ? 0 : Number(v));
 
 export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJournalFormProps) {
-  const [formData, setFormData] = useState<Omit<TradeRecord, "id">>({\n    ...(initialData || {
+  const [formData, setFormData] = useState<Omit<TradeRecord, "id">>({
+    ...(initialData || {
       date: new Date().toISOString().split("T")[0],
       type: "매수",
       quantity: 0,
@@ -134,21 +135,29 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
       {/* Core Fields: Quantity, Margin, Risk, Sections */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="quantity">수량 (랏수)</Label>
-          <Input
-            type="number"
-            id="quantity"
-            placeholder="0.01"
-            step="0.01"
-            value={formData.quantity === 0 ? "" : formData.quantity}
-            onChange={(e) => handleChange("quantity", toNumber(e.target.value))}
-            onFocus={handleFocus}
-          />
+          <Label htmlFor="quantity">수량</Label>
+          <div className="relative">
+            <Input
+              type="number"
+              id="quantity"
+              placeholder="0.01 (랏수)"
+              step="0.01"
+              value={formData.quantity === 0 ? "" : formData.quantity}
+              onChange={(e) => handleChange("quantity", toNumber(e.target.value))}
+              onFocus={handleFocus}
+              className="pr-16"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+              랏수
+            </span>
+          </div>
         </div>
         <div className="space-y-1">
           <Label htmlFor="margin">증거금</Label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none z-10">
+              $
+            </span>
             <Input
               type="number"
               id="margin"
@@ -167,27 +176,35 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
             <Input
               type="number"
               id="risk"
-              placeholder="0"
+              placeholder="0 (%)"
               step="1"
               value={formData.risk === 0 ? "" : formData.risk}
               onChange={(e) => handleChange("risk", parseInt(e.target.value) || 0)}
               onFocus={handleFocus}
-              className="pr-7"
+              className="pr-10"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">%</span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+              %
+            </span>
           </div>
         </div>
         <div className="space-y-1">
           <Label htmlFor="sections">구간 수</Label>
-          <Input
-            type="number"
-            id="sections"
-            placeholder="0"
-            step="1"
-            value={formData.sections === 0 ? "" : formData.sections}
-            onChange={(e) => handleChange("sections", parseInt(e.target.value) || 0)}
-            onFocus={handleFocus}
-          />
+          <div className="relative">
+            <Input
+              type="number"
+              id="sections"
+              placeholder="0 (구간)"
+              step="1"
+              value={formData.sections === 0 ? "" : formData.sections}
+              onChange={(e) => handleChange("sections", parseInt(e.target.value) || 0)}
+              onFocus={handleFocus}
+              className="pr-14"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+              구간
+            </span>
+          </div>
         </div>
       </div>
 
@@ -195,7 +212,7 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1">
           <Label htmlFor="session">장 선택</Label>
-          <Select value={formData.session || "아시아장"} onValueChange={(v) => handleChange("session", v)}>
+          <Select value={formData.session} onValueChange={(v) => handleChange("session", v)}>
             <SelectTrigger id="session">
               <SelectValue />
             </SelectTrigger>
@@ -211,7 +228,7 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
           <Input
             type="number"
             id="entryKTR"
-            placeholder="0.00"
+            placeholder="0.00 (KTR)"
             step="0.01"
             value={formData.entryKTR === 0 ? "" : formData.entryKTR}
             onChange={(e) => handleChange("entryKTR", toNumber(e.target.value))}
@@ -224,7 +241,9 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
       <div className="space-y-1">
         <Label htmlFor="profitLoss">손익</Label>
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">$</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none z-10">
+            $
+          </span>
           <Input
             type="number"
             id="profitLoss"
