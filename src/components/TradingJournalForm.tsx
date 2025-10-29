@@ -34,11 +34,11 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
       checklist: initialChecklistState,
     }),
     // Add new fields with defaults
-    margin: initialData?.margin || 0,
-    risk: initialData?.risk || 0,
-    sections: initialData?.sections || 0,
-    session: initialData?.session || "아시아장",
-    entryKTR: initialData?.entryKTR || 0,
+    margin: initialData?.margin ?? 0,
+    risk: initialData?.risk ?? 0,
+    sections: initialData?.sections ?? 0,
+    session: initialData?.session ?? "아시아장",
+    entryKTR: initialData?.entryKTR ?? 0,
   });
   
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -73,12 +73,29 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
     }
     setSubmitting(true);
     try {
-      console.log("[TradingJournalForm] Submitting formData:", formData);
-      await onSubmit(formData);
+      // Only submit essential fields, exclude deleted fields like entryPrice, exitPrice
+      const safeData: Omit<TradeRecord, "id"> = {
+        date: formData.date,
+        type: formData.type,
+        quantity: formData.quantity ?? 0,
+        profitLoss: formData.profitLoss ?? 0,
+        fee: formData.fee ?? 0,
+        strategy: formData.strategy,
+        memo: formData.memo ?? "",
+        checklist: formData.checklist ?? initialChecklistState,
+        margin: formData.margin ?? 0,
+        risk: formData.risk ?? 0,
+        sections: formData.sections ?? 0,
+        session: formData.session ?? "아시아장",
+        entryKTR: formData.entryKTR ?? 0,
+      };
+      
+      console.log("[TradingJournalForm] Submitting safe data:", safeData);
+      await onSubmit(safeData);
       toast.success(initialData ? "거래 내역이 수정되었습니다." : "거래 내역이 저장되었습니다.");
     } catch (err: any) {
       console.error("[TradingJournalForm] Submit error:", err);
-      toast.error(err.message || "저장 중 오류가 발생했습니다.");
+      toast.error(err?.message || "저장 중 오류가 발생했습니다.");
     } finally {
       setSubmitting(false);
     }
@@ -135,76 +152,52 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
       {/* Core Fields: Quantity, Margin, Risk, Sections */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="quantity">수량</Label>
-          <div className="relative">
-            <Input
-              type="number"
-              id="quantity"
-              placeholder="0.01 (랏수)"
-              step="0.01"
-              value={formData.quantity === 0 ? "" : formData.quantity}
-              onChange={(e) => handleChange("quantity", toNumber(e.target.value))}
-              onFocus={handleFocus}
-              className="pr-16"
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-              랏수
-            </span>
-          </div>
+          <Label htmlFor="quantity">수량 (랏수)</Label>
+          <Input
+            type="number"
+            id="quantity"
+            placeholder="0.01"
+            step="0.01"
+            value={formData.quantity === 0 ? "" : formData.quantity}
+            onChange={(e) => handleChange("quantity", toNumber(e.target.value))}
+            onFocus={handleFocus}
+          />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="margin">증거금</Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none z-10">
-              $
-            </span>
-            <Input
-              type="number"
-              id="margin"
-              placeholder="0.00"
-              step="0.01"
-              value={formData.margin === 0 ? "" : formData.margin}
-              onChange={(e) => handleChange("margin", toNumber(e.target.value))}
-              onFocus={handleFocus}
-              className="pl-7"
-            />
-          </div>
+          <Label htmlFor="margin">증거금 ($)</Label>
+          <Input
+            type="number"
+            id="margin"
+            placeholder="0.00"
+            step="0.01"
+            value={formData.margin === 0 ? "" : formData.margin}
+            onChange={(e) => handleChange("margin", toNumber(e.target.value))}
+            onFocus={handleFocus}
+          />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="risk">리스크</Label>
-          <div className="relative">
-            <Input
-              type="number"
-              id="risk"
-              placeholder="0 (%)"
-              step="1"
-              value={formData.risk === 0 ? "" : formData.risk}
-              onChange={(e) => handleChange("risk", parseInt(e.target.value) || 0)}
-              onFocus={handleFocus}
-              className="pr-10"
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-              %
-            </span>
-          </div>
+          <Label htmlFor="risk">리스크 (%)</Label>
+          <Input
+            type="number"
+            id="risk"
+            placeholder="0"
+            step="1"
+            value={formData.risk === 0 ? "" : formData.risk}
+            onChange={(e) => handleChange("risk", parseInt(e.target.value) || 0)}
+            onFocus={handleFocus}
+          />
         </div>
         <div className="space-y-1">
           <Label htmlFor="sections">구간 수</Label>
-          <div className="relative">
-            <Input
-              type="number"
-              id="sections"
-              placeholder="0 (구간)"
-              step="1"
-              value={formData.sections === 0 ? "" : formData.sections}
-              onChange={(e) => handleChange("sections", parseInt(e.target.value) || 0)}
-              onFocus={handleFocus}
-              className="pr-14"
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-              구간
-            </span>
-          </div>
+          <Input
+            type="number"
+            id="sections"
+            placeholder="0"
+            step="1"
+            value={formData.sections === 0 ? "" : formData.sections}
+            onChange={(e) => handleChange("sections", parseInt(e.target.value) || 0)}
+            onFocus={handleFocus}
+          />
         </div>
       </div>
 
@@ -228,7 +221,7 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
           <Input
             type="number"
             id="entryKTR"
-            placeholder="0.00 (KTR)"
+            placeholder="0.00"
             step="0.01"
             value={formData.entryKTR === 0 ? "" : formData.entryKTR}
             onChange={(e) => handleChange("entryKTR", toNumber(e.target.value))}
@@ -239,22 +232,16 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
 
       {/* Manual Profit/Loss Input */}
       <div className="space-y-1">
-        <Label htmlFor="profitLoss">손익</Label>
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none z-10">
-            $
-          </span>
-          <Input
-            type="number"
-            id="profitLoss"
-            placeholder="0.00"
-            step="0.01"
-            value={formData.profitLoss === 0 ? "" : formData.profitLoss}
-            onChange={(e) => handleChange("profitLoss", toNumber(e.target.value))}
-            onFocus={handleFocus}
-            className="pl-7"
-          />
-        </div>
+        <Label htmlFor="profitLoss">손익 ($)</Label>
+        <Input
+          type="number"
+          id="profitLoss"
+          placeholder="0.00"
+          step="0.01"
+          value={formData.profitLoss === 0 ? "" : formData.profitLoss}
+          onChange={(e) => handleChange("profitLoss", toNumber(e.target.value))}
+          onFocus={handleFocus}
+        />
       </div>
 
       {/* Memo */}
