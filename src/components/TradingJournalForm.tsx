@@ -26,6 +26,7 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
       checklist: initialChecklistState,
     }),
   });
+
   const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (field: keyof Omit<TradeRecord, "id">, value: any) => {
@@ -46,7 +47,7 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
       const submissionData = {
         ...formData,
         quantity: formData.quantity === '' ? 0 : Number(formData.quantity),
-        sections: formData.sections === '' ? 0 : Number(formData.sections),
+        sections: formData.sections === '' ? 0 : parseFloat(formData.sections as string),
         margin: formData.margin === '' ? 0 : Number(formData.margin),
         risk: formData.risk === '' ? 0 : Number(formData.risk),
         entryKTR: formData.entryKTR === '' ? 0 : Number(formData.entryKTR),
@@ -64,7 +65,7 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form className="space-y-6" onSubmit={handleSubmit}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -95,7 +96,7 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            거래량
+            증거금($)
           </label>
           <input
             type="number"
@@ -111,7 +112,7 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            분할 수
+            구간 수(N)
           </label>
           <input
             type="number"
@@ -121,22 +122,7 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
             placeholder="0"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             min="0"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            마진
-          </label>
-          <input
-            type="number"
-            value={formData.margin === 0 ? '' : formData.margin}
-            onChange={(e) => handleChange("margin", e.target.value)}
-            onFocus={() => handleNumberFocus("margin")}
-            placeholder="0"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            min="0"
-            step="0.01"
+            step="0.1"
           />
         </div>
 
