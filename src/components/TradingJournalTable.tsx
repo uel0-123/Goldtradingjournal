@@ -34,109 +34,99 @@ export function TradingJournalTable({ trades, onDelete, onRequestEdit, loading }
     <div className="relative">
       {loading ? (
         <div className="p-6 text-sm text-muted-foreground">목록을 불러오는 중...</div>
-      ) : trades.length === 0 ? (
-        <div className="p-6 text-sm text-muted-foreground">등록된 거래가 없습니다</div>
       ) : (
-        <div className="w-full overflow-x-auto">
-          <Table>
-            <TableHeader>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>날짜</TableHead>
+              <TableHead>매매타입</TableHead>
+              <TableHead>계약수</TableHead>
+              <TableHead>마진</TableHead>
+              <TableHead>리스크</TableHead>
+              <TableHead>구간</TableHead>
+              <TableHead>세션</TableHead>
+              <TableHead>진입KTR</TableHead>
+              <TableHead>손익</TableHead>
+              <TableHead>전략</TableHead>
+              <TableHead>체크리스트</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {trades.length === 0 ? (
               <TableRow>
-                <TableHead className="w-[100px]">일자</TableHead>
-                <TableHead className="w-[80px]">유형</TableHead>
-                <TableHead className="text-right">수량 (랏수)</TableHead>
-                <TableHead className="text-right">증거금 ($)</TableHead>
-                <TableHead className="text-right">리스크 (%)</TableHead>
-                <TableHead className="text-right">구간 수 (N)</TableHead>
-                <TableHead>장 선택</TableHead>
-                <TableHead className="text-right">진입 KTR</TableHead>
-                <TableHead className="text-right">손익 ($)</TableHead>
-                <TableHead>전략</TableHead>
-                <TableHead className="w-[160px] text-right">작업</TableHead>
+                <TableCell colSpan={12} className="text-center text-muted-foreground">
+                  데이터가 없습니다. 새로운 거래를 추가하세요.
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {trades.map((t, index) => {
-                const isProfitable = t.profitLoss > 0;
-                return (
-                  <TableRow key={t.id || index}>
-                    <TableCell>{t.date}</TableCell>
-                    <TableCell>
-                      <Badge variant={t.type === "매수" ? "default" : "secondary"}>
-                        {t.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{t.quantity.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">${t.margin.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{t.risk}%</TableCell>
-                    <TableCell className="text-right">{t.sections}</TableCell>
-                    <TableCell>{t.session}</TableCell>
-                    <TableCell className="text-right">{t.entryKTR.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">
-                      <span className={isProfitable ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
-                        {isProfitable && "+"}${t.profitLoss.toFixed(2)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{t.strategy || "-"}</span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setViewingChecklistTrade(t)}
-                          title="체크리스트 보기"
-                        >
-                          <ClipboardCheck className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => handleEditClick(t)}
-                          title="수정"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          onClick={() => setDeletingId(t.id)}
-                          title="삭제"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+            ) : (
+              trades.map((t) => (
+                <TableRow key={t.id}>
+                  <TableCell>{t.date ?? ""}</TableCell>
+                  <TableCell>
+                    <Badge variant={(t.type ?? "Buy") === "Buy" ? "default" : "destructive"} className="flex items-center gap-1 w-fit">
+                      {(t.type ?? "Buy") === "Buy" ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                      {t.type ?? ""}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{(t.quantity ?? 0).toFixed(2)}</TableCell>
+                  <TableCell>${(t.margin ?? 0).toFixed(2)}</TableCell>
+                  <TableCell>{t.risk ?? 0}%</TableCell>
+                  <TableCell>{t.sections ?? 0}</TableCell>
+                  <TableCell>{t.session ?? ""}</TableCell>
+                  <TableCell>{(t.entryKTR ?? 0).toFixed(2)}</TableCell>
+                  <TableCell className={`font-semibold ${(t.profitLoss ?? 0) > 0 ? "text-green-600" : (t.profitLoss ?? 0) < 0 ? "text-red-600" : ""}`}>
+                    ${(t.profitLoss ?? 0).toFixed(2)}
+                  </TableCell>
+                  <TableCell>{t.strategy ?? "-"}</TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm" onClick={() => setViewingChecklistTrade(t)} className="h-8 w-8 p-0">
+                      <ClipboardCheck className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => handleEditClick(t)} className="h-8 w-8 p-0">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setDeletingId(t.id)} className="h-8 w-8 p-0 text-red-600 hover:text-red-700">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       )}
-      {/* Delete confirm */}
-      <AlertDialog open={!!deletingId}>
+
+      <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>이 거래를 삭제하시겠습니까?</AlertDialogTitle>
-            <AlertDialogDescription>삭제 후 되돌릴 수 없습니다.</AlertDialogDescription>
+            <AlertDialogTitle>거래 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 거래를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeletingId(null)}>취소</AlertDialogCancel>
+            <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete}>삭제</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {/* Checklist viewer */}
-      <Dialog open={!!viewingChecklistTrade} onOpenChange={(open) => !open && setViewingChecklistTrade(null)}>
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+
+      <Dialog open={!!viewingChecklistTrade} onOpenChange={() => setViewingChecklistTrade(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>체크리스트</DialogTitle>
+            <DialogTitle>매매 체크리스트</DialogTitle>
           </DialogHeader>
           {viewingChecklistTrade && (
-            <div className="py-2">
-              <TradingRulesChecklist readonly value={viewingChecklistTrade.checklist} />
-            </div>
+            <TradingRulesChecklist
+              value={viewingChecklistTrade.checklist ?? []}
+              onChange={() => {}}
+              readOnly={true}
+            />
           )}
         </DialogContent>
       </Dialog>
