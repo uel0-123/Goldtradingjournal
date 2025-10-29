@@ -14,20 +14,16 @@ export interface TradeRecord {
   id: string;
   date: string;
   type: "매수" | "매도";
-  entryPrice: number;
-  exitPrice: number;
   quantity: number;
+  margin: number;
+  risk: number;
+  sections: number;
+  session: string;
+  entryKTR: number;
   profitLoss: number;
-  fee: number;
   strategy: string;
   memo: string;
   checklist: ChecklistItems;
-  // New fields
-  margin?: number;
-  risk?: number;
-  sections?: number;
-  session?: string;
-  entryKTR?: number;
 }
 
 export default function App() {
@@ -53,6 +49,11 @@ export default function App() {
     return id;
   };
 
+  const updateTrade = async (id: string, data: Omit<TradeRecord, "id">) => {
+    await updateTradeDB(id, data);
+    toast.success("거래가 수정되었습니다");
+  };
+
   const deleteTrade = async (id: string) => {
     await deleteTradeDB(id);
     toast.success("거래가 삭제되었습니다");
@@ -61,19 +62,19 @@ export default function App() {
   const handleRequestEdit = (trade: TradeRecord) => {
     setEditingTrade(trade);
     setIsDialogOpen(true);
+    setDialogError(null);
   };
 
-  const handleSaveEdit = async (updatedTrade: Omit<TradeRecord, "id">) => {
+  const handleSaveEdit = async (data: Omit<TradeRecord, "id">) => {
     if (!editingTrade) return;
     try {
-      console.log("[App] Updating trade:", editingTrade.id, updatedTrade);
-      await updateTradeDB(editingTrade.id, updatedTrade);
-      toast.success("거래가 수정되었습니다");
+      setDialogError(null);
+      await updateTrade(editingTrade.id, data);
       setIsDialogOpen(false);
       setEditingTrade(null);
-    } catch (err: any) {
-      console.error("[App] Update trade error:", err);
-      setDialogError(err.message || "수정 중 오류가 발생했습니다");
+    } catch (err) {
+      console.error("Error saving edit:", err);
+      setDialogError("거래 저장에 실패했습니다. 다시 시도해주세요.");
     }
   };
 
@@ -84,16 +85,16 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <Toaster richColors position="top-center" />
-      <div className="container mx-auto px-4 py-6 md:py-8">
-        <div className="mb-6 flex items-center gap-3">
-          <TrendingUp className="h-8 w-8 text-blue-600" />
-          <h1 className="text-3xl md:text-4xl font-bold text-slate-800">Gold Trading Journal</h1>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <Toaster position="top-right" richColors />
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center gap-3 mb-8">
+          <TrendingUp className="w-10 h-10 text-blue-600" />
+          <h1 className="text-4xl font-bold text-gray-800">금 거래 저널</h1>
         </div>
-        <Tabs defaultValue="journal" className="space-y-4">
-          <TabsList className="grid w-full md:w-auto grid-cols-2 md:inline-flex">
-            <TabsTrigger value="journal">거래 내역</TabsTrigger>
+        <Tabs defaultValue="journal" className="w-full">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
+            <TabsTrigger value="journal">거래 기록</TabsTrigger>
             <TabsTrigger value="new">새 거래 등록</TabsTrigger>
           </TabsList>
           <TabsContent value="journal" className="mt-6">
@@ -126,19 +127,16 @@ export default function App() {
               initialData={{
                 date: editingTrade.date,
                 type: editingTrade.type,
-                entryPrice: editingTrade.entryPrice,
-                exitPrice: editingTrade.exitPrice,
                 quantity: editingTrade.quantity,
-                profitLoss: editingTrade.profitLoss,
-                fee: editingTrade.fee,
-                strategy: editingTrade.strategy,
-                memo: editingTrade.memo,
-                checklist: editingTrade.checklist,
                 margin: editingTrade.margin,
                 risk: editingTrade.risk,
                 sections: editingTrade.sections,
                 session: editingTrade.session,
                 entryKTR: editingTrade.entryKTR,
+                profitLoss: editingTrade.profitLoss,
+                strategy: editingTrade.strategy,
+                memo: editingTrade.memo,
+                checklist: editingTrade.checklist,
               }}
               onSubmit={handleSaveEdit}
               onCancel={handleDialogClose}
