@@ -49,6 +49,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    include: ['firebase/app', 'firebase/database'],
+  },
   build: {
     target: 'esnext',
     outDir: 'dist',
