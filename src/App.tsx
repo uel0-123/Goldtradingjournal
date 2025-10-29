@@ -22,6 +22,12 @@ export interface TradeRecord {
   strategy: string;
   memo: string;
   checklist: ChecklistItems;
+  // New fields
+  margin?: number;
+  risk?: number;
+  sections?: number;
+  session?: string;
+  entryKTR?: number;
 }
 
 export default function App() {
@@ -54,50 +60,42 @@ export default function App() {
 
   const handleRequestEdit = (trade: TradeRecord) => {
     setEditingTrade(trade);
-    setDialogError(null);
     setIsDialogOpen(true);
   };
 
-  const handleEditCancel = () => {
+  const handleSaveEdit = async (updatedTrade: Omit<TradeRecord, "id">) => {
+    if (!editingTrade) return;
+    try {
+      console.log("[App] Updating trade:", editingTrade.id, updatedTrade);
+      await updateTradeDB(editingTrade.id, updatedTrade);
+      toast.success("거래가 수정되었습니다");
+      setIsDialogOpen(false);
+      setEditingTrade(null);
+    } catch (err: any) {
+      console.error("[App] Update trade error:", err);
+      setDialogError(err.message || "수정 중 오류가 발생했습니다");
+    }
+  };
+
+  const handleDialogClose = () => {
     setIsDialogOpen(false);
     setEditingTrade(null);
     setDialogError(null);
   };
 
-  const handleEditSubmit = async (data: Omit<TradeRecord, "id">) => {
-    try {
-      if (!editingTrade) return;
-      await updateTradeDB(editingTrade.id, data);
-      toast.success("거래가 수정되었습니다");
-      handleEditCancel();
-    } catch (e: any) {
-      setDialogError(e?.message ?? "수정 중 오류가 발생했습니다");
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Toaster richColors position="top-right" />
-
-      <header className="sticky top-0 z-10 bg-background/70 backdrop-blur border-b">
-        <div className="container mx-auto px-4 py-3 flex items-center gap-3">
-          <div className="p-2 rounded-md bg-primary/10 text-primary">
-            <TrendingUp className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold leading-tight">Gold Trading Journal</h1>
-            <p className="text-sm text-muted-foreground">거래 기록 · 전략 점검 · 성과 추적</p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <Toaster richColors position="top-center" />
+      <div className="container mx-auto px-4 py-6 md:py-8">
+        <div className="mb-6 flex items-center gap-3">
+          <TrendingUp className="h-8 w-8 text-blue-600" />
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-800">Gold Trading Journal</h1>
         </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-6">
-        <Tabs defaultValue="journal" className="w-full">
-          <TabsList className="grid grid-cols-2 w-full md:w-auto">
+        <Tabs defaultValue="journal" className="space-y-4">
+          <TabsList className="grid w-full md:w-auto grid-cols-2 md:inline-flex">
             <TabsTrigger value="journal">거래 내역</TabsTrigger>
-            <TabsTrigger value="new">새 거래</TabsTrigger>
+            <TabsTrigger value="new">새 거래 등록</TabsTrigger>
           </TabsList>
-
           <TabsContent value="journal" className="mt-6">
             <Card className="p-0 overflow-hidden">
               <TradingJournalTable
@@ -108,45 +106,43 @@ export default function App() {
               />
             </Card>
           </TabsContent>
-
           <TabsContent value="new" className="mt-6">
             <Card className="p-4 md:p-6">
               <TradingJournalForm onSubmit={addTrade} />
             </Card>
           </TabsContent>
         </Tabs>
-      </main>
-
-      {/* Edit Dialog */}
-      <Dialog
-        open={isDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) handleEditCancel();
-          setIsDialogOpen(open);
-        }}
-      >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      </div>
+      <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>거래 수정</DialogTitle>
           </DialogHeader>
-
-          {dialogError ? (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-red-600">{dialogError}</p>
-              <button onClick={handleEditCancel} className="mt-2 text-sm text-red-700 underline">
-                닫기
-              </button>
-            </div>
-          ) : editingTrade ? (
+          {dialogError && (
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">{dialogError}</div>
+          )}
+          {editingTrade && (
             <TradingJournalForm
-              onSubmit={handleEditSubmit}
-              onCancel={handleEditCancel}
-              initialData={editingTrade}
+              initialData={{
+                date: editingTrade.date,
+                type: editingTrade.type,
+                entryPrice: editingTrade.entryPrice,
+                exitPrice: editingTrade.exitPrice,
+                quantity: editingTrade.quantity,
+                profitLoss: editingTrade.profitLoss,
+                fee: editingTrade.fee,
+                strategy: editingTrade.strategy,
+                memo: editingTrade.memo,
+                checklist: editingTrade.checklist,
+                margin: editingTrade.margin,
+                risk: editingTrade.risk,
+                sections: editingTrade.sections,
+                session: editingTrade.session,
+                entryKTR: editingTrade.entryKTR,
+              }}
+              onSubmit={handleSaveEdit}
+              onCancel={handleDialogClose}
             />
-          ) : (
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-              <p className="text-yellow-700">수정할 거래를 불러오는 중...</p>
-            </div>
           )}
         </DialogContent>
       </Dialog>
