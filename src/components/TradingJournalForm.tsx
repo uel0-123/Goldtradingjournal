@@ -2,7 +2,6 @@ import { useState } from "react";
 import { TradeRecord } from "../App";
 import { TradingRulesChecklist, ChecklistItems, initialChecklistState } from "./TradingRulesChecklist";
 import { toast } from "sonner";
-
 // UI: Tailwind + existing shadcn primitives to emulate Material-UI density/outlined style
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
@@ -23,8 +22,8 @@ interface TradingJournalFormProps {
 const toNumber = (v: string) => (v === "" || isNaN(Number(v)) ? 0 : Number(v));
 
 export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJournalFormProps) {
-  const [formData, setFormData] = useState<Omit<TradeRecord, "id">>(
-    initialData || {
+  const [formData, setFormData] = useState<Omit<TradeRecord, "id">>({
+    ...(initialData || {
       date: new Date().toISOString().split("T")[0],
       type: "매수",
       entryPrice: 0,
@@ -35,73 +34,72 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
       strategy: "",
       memo: "",
       checklist: initialChecklistState,
-    }
-  );
-
+    }),
+    // Add new fields with defaults
+    margin: initialData?.margin || 0,
+    risk: initialData?.risk || 0,
+    sections: initialData?.sections || 0,
+    session: initialData?.session || "아시아장",
+    entryKTR: initialData?.entryKTR || 0,
+  });
+  
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
-  const calculateProfitLoss = () => {
-    const { type, entryPrice, exitPrice, quantity } = formData;
-    const diff = type === "매수" ? exitPrice - entryPrice : entryPrice - exitPrice;
-    return Number((diff * quantity).toFixed(2));
+  const handleChange = (field: keyof Omit<TradeRecord, "id">, value: any) => {
+    console.log("[TradingJournalForm] handleChange:", field, value);
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    // Clear field error when user corrects it
+    if (errors[field]) {
+      setErrors((prev) => {
+        const updated = { ...prev };
+        delete updated[field];
+        return updated;
+      });
+    }
   };
 
   const validate = () => {
     const e: Record<string, string> = {};
     if (!formData.date) e.date = "거래일을 입력하세요";
     if (!formData.strategy) e.strategy = "전략명을 입력하세요";
-    if (formData.quantity <= 0) e.quantity = "수량은 1 이상이어야 합니다";
-    if (formData.entryPrice <= 0) e.entryPrice = "진입가는 0보다 커야 합니다";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleChange = (key: keyof Omit<TradeRecord, "id">, value: any) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
-    if (errors[key]) {
-      setErrors((prev) => ({ ...prev, [key]: "" }));
-    }
-  };
-
-  const handleSubmit = async (ev: React.FormEvent) => {
-    ev.preventDefault();
+  const handleSubmit = async (evt: React.FormEvent) => {
+    evt.preventDefault();
     if (!validate()) {
-      toast.error("입력 내용을 확인하세요");
+      toast.error("필수 항목을 입력하세요.");
       return;
     }
 
     setSubmitting(true);
     try {
-      const profitLoss = calculateProfitLoss();
-      // ERROR CHECK: checklist가 null/undefined인 경우 초기값으로 대체
-      const safeChecklist = formData.checklist || initialChecklistState;
-      console.log("[TradingJournalForm] Submitting with checklist:", safeChecklist);
-      
-      await onSubmit({ ...formData, profitLoss, checklist: safeChecklist });
-      toast.success(initialData ? "매매일지 수정 완료" : "매매일지 저장 완료");
-    } catch (error) {
-      // ERROR LOG: 제출 실패 시 에러 로그
-      console.error("[TradingJournalForm] Submit failed:", error);
-      toast.error("저장 중 오류가 발생했습니다");
+      console.log("[TradingJournalForm] Submitting formData:", formData);
+      await onSubmit(formData);
+      toast.success(initialData ? "거래 내역이 수정되었습니다." : "거래 내역이 저장되었습니다.");
+    } catch (err: any) {
+      console.error("[TradingJournalForm] Submit error:", err);
+      toast.error(err.message || "저장 중 오류가 발생했습니다.");
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-5 p-4 md:p-6">
       {/* Date & Type */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1">
           <Label htmlFor="date">거래일</Label>
           <Input
-            id="date"
             type="date"
+            id="date"
             value={formData.date}
             onChange={(e) => handleChange("date", e.target.value)}
           />
-          {errors.date && <p className="text-xs text-destructive">{errors.date}</p>}
+          {errors.date && <p className="text-xs text-red-500">{errors.date}</p>}
         </div>
         <div className="space-y-1">
           <Label htmlFor="type">거래 유형</Label>
@@ -110,8 +108,8 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="매수">매수 (Long)</SelectItem>
-              <SelectItem value="매도">매도 (Short)</SelectItem>
+              <SelectItem value="매수">매수</SelectItem>
+              <SelectItem value="매도">매도</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -121,68 +119,145 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
       <div className="space-y-1">
         <Label htmlFor="strategy">전략명</Label>
         <Input
+          type="text"
           id="strategy"
-          placeholder="예: 이평선 골든크로스"
+          placeholder="전략명을 입력하세요"
           value={formData.strategy}
           onChange={(e) => handleChange("strategy", e.target.value)}
         />
-        {errors.strategy && <p className="text-xs text-destructive">{errors.strategy}</p>}
+        {errors.strategy && <p className="text-xs text-red-500">{errors.strategy}</p>}
       </div>
 
-      {/* Prices & Quantity */}
+      {/* Entry Price, Exit Price, Quantity */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="entryPrice">진입가</Label>
-          <Input
-            id="entryPrice"
-            inputMode="decimal"
-            value={formData.entryPrice}
-            onChange={(e) => handleChange("entryPrice", toNumber(e.target.value))}
-          />
-          {errors.entryPrice && <p className="text-xs text-destructive">{errors.entryPrice}</p>}
+          <Label htmlFor="entryPrice">진입 가격 ($)</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+            <Input
+              type="number"
+              id="entryPrice"
+              placeholder="0.00"
+              step="0.01"
+              value={formData.entryPrice}
+              onChange={(e) => handleChange("entryPrice", toNumber(e.target.value))}
+              className="pl-7"
+            />
+          </div>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="exitPrice">청산가</Label>
-          <Input
-            id="exitPrice"
-            inputMode="decimal"
-            value={formData.exitPrice}
-            onChange={(e) => handleChange("exitPrice", toNumber(e.target.value))}
-          />
+          <Label htmlFor="exitPrice">청산 가격 ($)</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+            <Input
+              type="number"
+              id="exitPrice"
+              placeholder="0.00"
+              step="0.01"
+              value={formData.exitPrice}
+              onChange={(e) => handleChange("exitPrice", toNumber(e.target.value))}
+              className="pl-7"
+            />
+          </div>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="quantity">수량</Label>
+          <Label htmlFor="quantity">수량 (랏수)</Label>
           <Input
+            type="number"
             id="quantity"
-            inputMode="decimal"
+            placeholder="0.01"
+            step="0.01"
             value={formData.quantity}
             onChange={(e) => handleChange("quantity", toNumber(e.target.value))}
           />
-          {errors.quantity && <p className="text-xs text-destructive">{errors.quantity}</p>}
         </div>
       </div>
 
-      {/* Fee */}
+      {/* New fields: Margin, Risk, Sections, Session, Entry KTR */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="fee">수수료</Label>
+          <Label htmlFor="margin">증거금 ($)</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+            <Input
+              type="number"
+              id="margin"
+              placeholder="0.00"
+              step="0.01"
+              value={formData.margin || 0}
+              onChange={(e) => handleChange("margin", toNumber(e.target.value))}
+              className="pl-7"
+            />
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="risk">리스크 (%)</Label>
+          <div className="relative">
+            <Input
+              type="number"
+              id="risk"
+              placeholder="0"
+              step="1"
+              value={formData.risk || 0}
+              onChange={(e) => handleChange("risk", parseInt(e.target.value) || 0)}
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="sections">구간 수 (N)</Label>
           <Input
-            id="fee"
-            inputMode="decimal"
-            value={formData.fee}
-            onChange={(e) => handleChange("fee", toNumber(e.target.value))}
+            type="number"
+            id="sections"
+            placeholder="0"
+            step="1"
+            value={formData.sections || 0}
+            onChange={(e) => handleChange("sections", parseInt(e.target.value) || 0)}
           />
         </div>
       </div>
 
-      {/* Profit/Loss Display */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label>예상 손익</Label>
-          <div className="h-10 px-3 rounded-md border bg-muted/30 flex items-center text-sm">
-            {calculateProfitLoss().toLocaleString()}
-          </div>
-          <p className="text-xs text-muted-foreground">현재 값 기준 예상 손익입니다</p>
+          <Label htmlFor="session">장 선택</Label>
+          <Select value={formData.session || "아시아장"} onValueChange={(v) => handleChange("session", v)}>
+            <SelectTrigger id="session">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="아시아장">아시아장</SelectItem>
+              <SelectItem value="유로장">유로장</SelectItem>
+              <SelectItem value="미장">미장</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="entryKTR">진입 KTR</Label>
+          <Input
+            type="number"
+            id="entryKTR"
+            placeholder="0.00"
+            step="0.01"
+            value={formData.entryKTR || 0}
+            onChange={(e) => handleChange("entryKTR", toNumber(e.target.value))}
+          />
+        </div>
+      </div>
+
+      {/* Manual Profit/Loss Input */}
+      <div className="space-y-1">
+        <Label htmlFor="profitLoss">손익 ($)</Label>
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+          <Input
+            type="number"
+            id="profitLoss"
+            placeholder="0.00"
+            step="0.01"
+            value={formData.profitLoss}
+            onChange={(e) => handleChange("profitLoss", toNumber(e.target.value))}
+            className="pl-7"
+          />
         </div>
       </div>
 
@@ -198,9 +273,8 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
         />
       </div>
 
-      {/* Trading Rules Checklist - NULL/UNDEFINED FALLBACK 적용 */}
+      {/* Trading Rules Checklist */}
       <Card className="p-4 md:p-5">
-        {/* ERROR CHECK: checklist prop에 null/undefined 방지를 위한 fallback 적용 */}
         <TradingRulesChecklist
           checklist={formData.checklist || initialChecklistState}
           onChange={(v: ChecklistItems) => {
