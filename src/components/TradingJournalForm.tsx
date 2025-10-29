@@ -3,300 +3,218 @@ import { TradeRecord } from "../App";
 import { TradingRulesChecklist, ChecklistItems, initialChecklistState } from "./TradingRulesChecklist";
 import { toast } from "sonner";
 
-// UI: Tailwind + existing shadcn primitives to emulate Material-UI density/outlined style
-import { Card } from "./ui/card";
-import { Button } from "./ui/button";
-import { Label } from "./ui/label";
-import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-
 interface TradingJournalFormProps {
-  // onSubmit must accept data without id (DB generates id)
   onSubmit: (trade: Omit<TradeRecord, "id">) => void | Promise<void>;
-  // When editing
   initialData?: Omit<TradeRecord, "id">;
   onCancel?: () => void;
 }
-
-// Helper to validate numeric input
-const toNumber = (v: string) => (v === "" || isNaN(Number(v)) ? 0 : Number(v));
 
 export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJournalFormProps) {
   const [formData, setFormData] = useState<Omit<TradeRecord, "id">>({
     ...( initialData || {
       date: new Date().toISOString().split("T")[0],
       type: "매수",
+      entryPrice: 0,
+      exitPrice: 0,
       quantity: 0,
-      profitLoss: 0,
+      sections: 0,
       fee: 0,
       strategy: "",
       memo: "",
       checklist: initialChecklistState,
     }),
-    // Add new fields with defaults
-    targetPrice: initialData?.targetPrice ?? 0,
-    stopLoss: initialData?.stopLoss ?? 0,
-    sections: initialData?.sections ?? 0,
-    entryStart: initialData?.entryStart ?? 0,
-    entryEnd: initialData?.entryEnd ?? 0,
-    tpStart: initialData?.tpStart ?? 0,
-    tpEnd: initialData?.tpEnd ?? 0,
-    slStart: initialData?.slStart ?? 0,
-    slEnd: initialData?.slEnd ?? 0,
   });
-
   const [submitting, setSubmitting] = useState(false);
 
-  const handleChange = <K extends keyof Omit<TradeRecord, "id">>(
-    field: K,
-    value: Omit<TradeRecord, "id">[K]
-  ) => {
+  const handleChange = (field: keyof Omit<TradeRecord, "id">, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    // Select text on focus
-    e.target.select();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-
+    console.log("[TradingJournalForm] handleSubmit called with formData:", formData);
     try {
       await onSubmit(formData);
-      toast.success(initialData ? "수정 완료" : "저장 완료");
-      if (!initialData) {
-        // Reset form if not editing
-        setFormData({
-          date: new Date().toISOString().split("T")[0],
-          type: "매수",
-          quantity: 0,
-          profitLoss: 0,
-          fee: 0,
-          strategy: "",
-          memo: "",
-          checklist: initialChecklistState,
-          targetPrice: 0,
-          stopLoss: 0,
-          sections: 0,
-          entryStart: 0,
-          entryEnd: 0,
-          tpStart: 0,
-          tpEnd: 0,
-          slStart: 0,
-          slEnd: 0,
-        });
-      }
+      toast.success(initialData ? "거래가 수정되었습니다" : "거래가 기록되었습니다");
     } catch (error) {
       console.error("[TradingJournalForm] Submit error:", error);
-      toast.error("저장 실패");
+      toast.error(initialData ? "수정 실패" : "저장 실패");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {/* Date */}
       <div className="space-y-1">
-        <Label htmlFor="date">날짜</Label>
-        <Input
+        <label htmlFor="date" className="text-sm font-medium">
+          날짜
+        </label>
+        <input
           type="date"
           id="date"
           value={formData.date}
           onChange={(e) => handleChange("date", e.target.value)}
+          className="w-full rounded-md border px-3 py-2"
         />
       </div>
 
       {/* Type */}
       <div className="space-y-1">
-        <Label htmlFor="type">거래 유형</Label>
-        <Select value={formData.type} onValueChange={(v: "매수" | "매도") => handleChange("type", v)}>
-          <SelectTrigger id="type">
-            <SelectValue placeholder="선택" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="매수">매수</SelectItem>
-            <SelectItem value="매도">매도</SelectItem>
-          </SelectContent>
-        </Select>
+        <label htmlFor="type" className="text-sm font-medium">
+          거래 유형
+        </label>
+        <select
+          id="type"
+          value={formData.type}
+          onChange={(e) => handleChange("type", e.target.value as "매수" | "매도")}
+          className="w-full rounded-md border px-3 py-2"
+        >
+          <option value="매수">매수</option>
+          <option value="매도">매도</option>
+        </select>
+      </div>
+
+      {/* Entry Price */}
+      <div className="space-y-1">
+        <label htmlFor="entryPrice" className="text-sm font-medium">
+          진입가 ($)
+        </label>
+        <input
+          type="number"
+          id="entryPrice"
+          placeholder="0.00"
+          step="0.01"
+          value={formData.entryPrice === 0 ? "" : formData.entryPrice}
+          onChange={(e) => handleChange("entryPrice", e.target.value === "" ? 0 : parseFloat(e.target.value))}
+          onFocus={handleFocus}
+          className="w-full rounded-md border px-3 py-2"
+        />
+      </div>
+
+      {/* Exit Price */}
+      <div className="space-y-1">
+        <label htmlFor="exitPrice" className="text-sm font-medium">
+          청산가 ($)
+        </label>
+        <input
+          type="number"
+          id="exitPrice"
+          placeholder="0.00"
+          step="0.01"
+          value={formData.exitPrice === 0 ? "" : formData.exitPrice}
+          onChange={(e) => handleChange("exitPrice", e.target.value === "" ? 0 : parseFloat(e.target.value))}
+          onFocus={handleFocus}
+          className="w-full rounded-md border px-3 py-2"
+        />
       </div>
 
       {/* Quantity */}
       <div className="space-y-1">
-        <Label htmlFor="quantity">수량</Label>
-        <Input
+        <label htmlFor="quantity" className="text-sm font-medium">
+          수량 (g)
+        </label>
+        <input
           type="number"
           id="quantity"
           placeholder="0"
           step="1"
           value={formData.quantity === 0 ? "" : formData.quantity}
-          onChange={(e) => handleChange("quantity", parseInt(e.target.value) || 0)}
+          onChange={(e) => handleChange("quantity", e.target.value === "" ? 0 : parseInt(e.target.value))}
           onFocus={handleFocus}
+          className="w-full rounded-md border px-3 py-2"
         />
       </div>
 
-      {/* Entry Range (Start ~ End) */}
+      {/* Sections (구간 수) - with step 0.5 and parseFloat */}
       <div className="space-y-1">
-        <Label>진입 범위 (Entry Start ~ Entry End)</Label>
-        <div className="flex items-center gap-2">
-          <Input
-            type="number"
-            placeholder="Start"
-            step="0.01"
-            value={formData.entryStart === 0 ? "" : formData.entryStart}
-            onChange={(e) => handleChange("entryStart", toNumber(e.target.value))}
-            onFocus={handleFocus}
-          />
-          <span className="text-sm text-muted-foreground">~</span>
-          <Input
-            type="number"
-            placeholder="End"
-            step="0.01"
-            value={formData.entryEnd === 0 ? "" : formData.entryEnd}
-            onChange={(e) => handleChange("entryEnd", toNumber(e.target.value))}
-            onFocus={handleFocus}
-          />
-        </div>
-      </div>
-
-      {/* Target Price Range (Start ~ End) */}
-      <div className="space-y-1">
-        <Label>목표가 범위 (TP Start ~ TP End)</Label>
-        <div className="flex items-center gap-2">
-          <Input
-            type="number"
-            placeholder="Start"
-            step="0.01"
-            value={formData.tpStart === 0 ? "" : formData.tpStart}
-            onChange={(e) => handleChange("tpStart", toNumber(e.target.value))}
-            onFocus={handleFocus}
-          />
-          <span className="text-sm text-muted-foreground">~</span>
-          <Input
-            type="number"
-            placeholder="End"
-            step="0.01"
-            value={formData.tpEnd === 0 ? "" : formData.tpEnd}
-            onChange={(e) => handleChange("tpEnd", toNumber(e.target.value))}
-            onFocus={handleFocus}
-          />
-        </div>
-      </div>
-
-      {/* Stop Loss Range (Start ~ End) */}
-      <div className="space-y-1">
-        <Label>손절가 범위 (SL Start ~ SL End)</Label>
-        <div className="flex items-center gap-2">
-          <Input
-            type="number"
-            placeholder="Start"
-            step="0.01"
-            value={formData.slStart === 0 ? "" : formData.slStart}
-            onChange={(e) => handleChange("slStart", toNumber(e.target.value))}
-            onFocus={handleFocus}
-          />
-          <span className="text-sm text-muted-foreground">~</span>
-          <Input
-            type="number"
-            placeholder="End"
-            step="0.01"
-            value={formData.slEnd === 0 ? "" : formData.slEnd}
-            onChange={(e) => handleChange("slEnd", toNumber(e.target.value))}
-            onFocus={handleFocus}
-          />
-        </div>
-      </div>
-
-      {/* Sections (N) */}
-      <div className="space-y-1">
-        <Label htmlFor="sections">구간 수 (0.5 단위)</Label>
-        <Input
+        <label htmlFor="sections" className="text-sm font-medium">
+          구간 수 (N)
+        </label>
+        <input
           type="number"
           id="sections"
           placeholder="0"
           step="0.5"
           value={formData.sections === 0 ? "" : formData.sections}
-          onChange={(e) => handleChange("sections", parseFloat(e.target.value) || 0)}
+          onChange={(e) => handleChange("sections", e.target.value === "" ? 0 : parseFloat(e.target.value))}
           onFocus={handleFocus}
-        />
-      </div>
-
-      {/* Strategy */}
-      <div className="space-y-1">
-        <Label htmlFor="strategy">전략</Label>
-        <Input
-          type="text"
-          id="strategy"
-          placeholder="전략 이름"
-          value={formData.strategy}
-          onChange={(e) => handleChange("strategy", e.target.value)}
+          className="w-full rounded-md border px-3 py-2"
         />
       </div>
 
       {/* Fee */}
       <div className="space-y-1">
-        <Label htmlFor="fee">수수료 ($)</Label>
-        <Input
+        <label htmlFor="fee" className="text-sm font-medium">
+          수수료 ($)
+        </label>
+        <input
           type="number"
           id="fee"
           placeholder="0.00"
           step="0.01"
           value={formData.fee === 0 ? "" : formData.fee}
-          onChange={(e) => handleChange("fee", toNumber(e.target.value))}
+          onChange={(e) => handleChange("fee", e.target.value === "" ? 0 : parseFloat(e.target.value))}
           onFocus={handleFocus}
+          className="w-full rounded-md border px-3 py-2"
         />
       </div>
 
-      {/* Manual Profit/Loss Input */}
+      {/* Strategy */}
       <div className="space-y-1">
-        <Label htmlFor="profitLoss">손익 ($)</Label>
-        <Input
-          type="number"
-          id="profitLoss"
-          placeholder="0.00"
-          step="0.01"
-          value={formData.profitLoss === 0 ? "" : formData.profitLoss}
-          onChange={(e) => handleChange("profitLoss", toNumber(e.target.value))}
-          onFocus={handleFocus}
+        <label htmlFor="strategy" className="text-sm font-medium">
+          전략
+        </label>
+        <input
+          type="text"
+          id="strategy"
+          placeholder="사용한 거래 전략을 입력하세요"
+          value={formData.strategy}
+          onChange={(e) => handleChange("strategy", e.target.value)}
+          className="w-full rounded-md border px-3 py-2"
         />
       </div>
 
       {/* Memo */}
-      <div className="space-y-2">
-        <Label htmlFor="memo">메모</Label>
-        <Textarea
+      <div className="space-y-1">
+        <label htmlFor="memo" className="text-sm font-medium">
+          메모
+        </label>
+        <textarea
           id="memo"
           rows={4}
           placeholder="트레이드 메모를 입력하세요"
           value={formData.memo}
           onChange={(e) => handleChange("memo", e.target.value)}
+          className="w-full rounded-md border px-3 py-2"
         />
       </div>
 
       {/* Trading Rules Checklist */}
-      <Card className="p-4 md:p-5">
-        <TradingRulesChecklist
-          checklist={formData.checklist || initialChecklistState}
-          onChange={(v: ChecklistItems) => {
-            console.log("[TradingJournalForm] Checklist onChange:", v);
-            handleChange("checklist", v);
-          }}
-        />
-      </Card>
+      <TradingRulesChecklist
+        checklist={formData.checklist || initialChecklistState}
+        onChange={(v: ChecklistItems) => {
+          console.log("[TradingJournalForm] Checklist onChange:", v);
+          handleChange("checklist", v);
+        }}
+      />
 
       {/* Actions */}
       <div className="flex items-center justify-end gap-2">
         {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
+          <button type="button" onClick={onCancel} disabled={submitting} className="rounded-md border px-4 py-2">
             취소
-          </Button>
+          </button>
         )}
-        <Button type="submit" disabled={submitting}>
+        <button type="submit" disabled={submitting} className="rounded-md bg-blue-600 px-4 py-2 text-white">
           {submitting ? "저장 중..." : initialData ? "수정 저장" : "저장"}
-        </Button>
+        </button>
       </div>
     </form>
   );
