@@ -1,6 +1,6 @@
 // src/lib/firebase.ts
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, push, onValue, get, set, update, remove, DataSnapshot } from "firebase/database";
+import { getDatabase, ref, push, onValue, get, update, remove } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB0ZcbRrw4ffc-PBPAavd9iUJNHlN9r01k",
@@ -16,28 +16,50 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// TradeRecord 타입 선언(구조 분석 기반)
+// Checklist 구조 (TradingRulesChecklist.tsx 참고)
+export interface ChecklistItems {
+  timeRules: {
+    mindset1: boolean;
+    mindset2: boolean;
+    positionSize: boolean;
+    checkInterval: boolean;
+    sleepAt12: boolean;
+  };
+  tradingRules: {
+    checkPrevMarket: boolean;
+    checkKeyLevels: boolean;
+    asiaSession: boolean;
+    minPosition: boolean;
+    candleClose: boolean;
+    noDoubleEntry: boolean;
+    emaDistance: boolean;
+    avoidFirstZone: boolean;
+    profitTrailing: boolean;
+  };
+}
+
 export interface TradeRecord {
-  id?: string; // Firebase에서는 key로 사용됨. (옵셔널로 두세요)
+  id?: string;
   date: string;
-  orderType: string;
+  type: "매수" | "매도";
   entryPrice: number;
   exitPrice: number;
   quantity: number;
   profitLoss: number;
-  notes: string;
-  image?: string;   // 이미지 URL(옵션)
-  tags?: string[];
+  fee: number;
+  strategy: string;
+  memo: string;
+  checklist: ChecklistItems; // 체크리스트 결과 포함!
 }
 
-// 1. 거래 추가
+// 거래 추가 (체크리스트 포함)
 export async function addTrade(trade: Omit<TradeRecord, "id">): Promise<string> {
   const refList = ref(db, "trades");
   const newRef = await push(refList, trade);
   return newRef.key ?? "";
 }
 
-// 2. 전체 거래 불러오기(구독 방식)
+// 전체 거래 실시간 구독
 export function subscribeTrades(callback: (trades: TradeRecord[]) => void) {
   const tradesRef = ref(db, "trades");
   onValue(tradesRef, (snapshot) => {
@@ -49,7 +71,7 @@ export function subscribeTrades(callback: (trades: TradeRecord[]) => void) {
   });
 }
 
-// 3. 전체 거래 단발 불러오기(동기)
+// 단발 전체 가져오기
 export async function getTrades(): Promise<TradeRecord[]> {
   const snapshot = await get(ref(db, "trades"));
   const data = snapshot.val();
@@ -57,19 +79,24 @@ export async function getTrades(): Promise<TradeRecord[]> {
   return Object.entries(data).map(([id, val]) => ({ id, ...(val as TradeRecord) }));
 }
 
-// 4. 단일 거래 불러오기
+// 단일 거래 가져오기
 export async function getTradeById(id: string): Promise<TradeRecord | null> {
   const snapshot = await get(ref(db, `trades/${id}`));
   if (!snapshot.exists()) return null;
   return { id, ...(snapshot.val() as TradeRecord) };
 }
 
-// 5. 거래 수정
+// 거래 수정 (체크리스트 포함)
 export async function updateTrade(id: string, trade: Partial<Omit<TradeRecord, "id">>) {
   await update(ref(db, `trades/${id}`), trade);
 }
 
-// 6. 거래 삭제
+// 체크리스트만 선택적으로 수정
+export async function updateTradeChecklist(id: string, checklist: ChecklistItems) {
+  await update(ref(db, `trades/${id}`), { checklist });
+}
+
+// 거래 삭제
 export async function deleteTrade(id: string) {
   await remove(ref(db, `trades/${id}`));
 }
