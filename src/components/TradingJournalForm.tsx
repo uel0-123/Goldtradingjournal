@@ -1,20 +1,26 @@
 import { useState } from "react";
+import { TradeRecord } from "../App";
+import { TradingRulesChecklist, ChecklistItems, initialChecklistState } from "./TradingRulesChecklist";
+import { toast } from "sonner";
+
+// UI: Tailwind + existing shadcn primitives to emulate Material-UI density/outlined style
 import { Card } from "./ui/card";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
 import { Button } from "./ui/button";
+import { Label } from "./ui/label";
+import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { TradeRecord } from "../App";
-import { Plus, Calculator } from "lucide-react";
-import { toast } from "sonner@2.0.3";
-import { TradingRulesChecklist, ChecklistItems, initialChecklistState } from "./TradingRulesChecklist";
 
 interface TradingJournalFormProps {
-  onSubmit: (trade: Omit<TradeRecord, "id">) => void;
+  // onSubmit must accept data without id (DB generates id)
+  onSubmit: (trade: Omit<TradeRecord, "id">) => void | Promise<void>;
+  // When editing
   initialData?: Omit<TradeRecord, "id">;
   onCancel?: () => void;
 }
+
+// Helper to validate numeric input
+const toNumber = (v: string) => (v === "" || isNaN(Number(v)) ? 0 : Number(v));
 
 export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJournalFormProps) {
   const [formData, setFormData] = useState<Omit<TradeRecord, "id">>(
@@ -31,227 +37,187 @@ export function TradingJournalForm({ onSubmit, initialData, onCancel }: TradingJ
       checklist: initialChecklistState,
     }
   );
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const calculateProfitLoss = () => {
     const { type, entryPrice, exitPrice, quantity } = formData;
-    let profit = 0;
-    
-    if (type === "매수") {
-      // 매수 후 매도: (청산가 - 진입가) × 수량
-      profit = (exitPrice - entryPrice) * quantity;
-    } else {
-      // 매도 후 매수: (진입가 - 청산가) × 수량
-      profit = (entryPrice - exitPrice) * quantity;
-    }
-    
-    setFormData({ ...formData, profitLoss: profit });
-    toast.success(`손익이 계산되었습니다: ${profit >= 0 ? "+" : ""}$${profit.toLocaleString()}`);
+    const diff = type === "매수" ? exitPrice - entryPrice : entryPrice - exitPrice;
+    return Number((diff * quantity).toFixed(2));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!formData.date) e.date = "거래일을 입력하세요";
+    if (!formData.strategy) e.strategy = "전략명을 입력하세요";
+    if (formData.quantity <= 0) e.quantity = "수량은 1 이상이어야 합니다";
+    if (formData.entryPrice < 0) e.entryPrice = "진입가는 0 이상이어야 합니다";
+    if (formData.exitPrice < 0) e.exitPrice = "청산가는 0 이상이어야 합니다";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleChange = (key: keyof Omit<TradeRecord, "id">, value: any) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.date) {
-      toast.error("거래 날짜를 입력해주세요");
-      return;
-    }
-    
-    onSubmit(formData);
-    toast.success("거래가 기록되었습니다");
-    
-    // Reset form
-    if (!initialData) {
-      setFormData({
-        date: new Date().toISOString().split("T")[0],
-        type: "매수",
-        entryPrice: 0,
-        exitPrice: 0,
-        quantity: 0,
-        profitLoss: 0,
-        fee: 0,
-        strategy: "",
-        memo: "",
-        checklist: initialChecklistState,
-      });
+    if (!validate()) return;
+    setSubmitting(true);
+    try {
+      const profitLoss = calculateProfitLoss();
+      await onSubmit({ ...formData, profitLoss });
+      toast.success("저장되었습니다");
+      if (!initialData) {
+        setFormData({
+          date: new Date().toISOString().split("T")[0],
+          type: "매수",
+          entryPrice: 0,
+          exitPrice: 0,
+          quantity: 0,
+          profitLoss: 0,
+          fee: 0,
+          strategy: "",
+          memo: "",
+          checklist: initialChecklistState,
+        });
+      }
+    } catch (err: any) {
+      toast.error(err?.message ?? "저장 중 오류가 발생했습니다");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <Card className="p-6 bg-white/80 backdrop-blur border-amber-200">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* 거래 날짜 */}
-          <div className="space-y-2">
-            <Label htmlFor="date">거래 날짜</Label>
-            <Input
-              id="date"
-              type="date"
-              value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              required
-            />
-          </div>
-
-          {/* 거래 유형 */}
-          <div className="space-y-2">
-            <Label htmlFor="type">거래 유형</Label>
-            <Select
-              value={formData.type}
-              onValueChange={(value: "매수" | "매도") =>
-                setFormData({ ...formData, type: value })
-              }
-            >
-              <SelectTrigger id="type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="매수">매수 (Long)</SelectItem>
-                <SelectItem value="매도">매도 (Short)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* 진입 가격 */}
-          <div className="space-y-2">
-            <Label htmlFor="entryPrice">진입 가격 ($)</Label>
-            <Input
-              id="entryPrice"
-              type="number"
-              step="0.01"
-              value={formData.entryPrice || ""}
-              onChange={(e) =>
-                setFormData({ ...formData, entryPrice: parseFloat(e.target.value) || 0 })
-              }
-              placeholder="0"
-            />
-          </div>
-
-          {/* 청산 가격 */}
-          <div className="space-y-2">
-            <Label htmlFor="exitPrice">청산 가격 ($)</Label>
-            <Input
-              id="exitPrice"
-              type="number"
-              step="0.01"
-              value={formData.exitPrice || ""}
-              onChange={(e) =>
-                setFormData({ ...formData, exitPrice: parseFloat(e.target.value) || 0 })
-              }
-              placeholder="0"
-            />
-          </div>
-
-          {/* 수량 */}
-          <div className="space-y-2">
-            <Label htmlFor="quantity">수량 (계약)</Label>
-            <Input
-              id="quantity"
-              type="number"
-              step="0.01"
-              value={formData.quantity || ""}
-              onChange={(e) =>
-                setFormData({ ...formData, quantity: parseFloat(e.target.value) || 0 })
-              }
-              placeholder="0"
-            />
-          </div>
-
-          {/* 수수료 */}
-          <div className="space-y-2">
-            <Label htmlFor="fee">수수료 ($)</Label>
-            <Input
-              id="fee"
-              type="number"
-              step="0.01"
-              value={formData.fee || ""}
-              onChange={(e) =>
-                setFormData({ ...formData, fee: parseFloat(e.target.value) || 0 })
-              }
-              placeholder="0"
-            />
-          </div>
-        </div>
-
-        {/* 손익 계산 */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="profitLoss">손익 ($)</Label>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={calculateProfitLoss}
-              className="gap-2"
-            >
-              <Calculator className="w-4 h-4" />
-              자동 계산
-            </Button>
-          </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-1">
+          <Label htmlFor="date">거래일</Label>
           <Input
-            id="profitLoss"
-            type="number"
-            step="0.01"
-            value={formData.profitLoss || ""}
-            onChange={(e) =>
-              setFormData({ ...formData, profitLoss: parseFloat(e.target.value) || 0 })
-            }
-            placeholder="0"
-            className={
-              formData.profitLoss > 0
-                ? "border-green-500"
-                : formData.profitLoss < 0
-                ? "border-red-500"
-                : ""
-            }
+            id="date"
+            type="date"
+            value={formData.date}
+            onChange={(e) => handleChange("date", e.target.value)}
           />
+          {errors.date && <p className="text-xs text-red-600 mt-1">{errors.date}</p>}
         </div>
 
-        {/* 전략 */}
-        <div className="space-y-2">
-          <Label htmlFor="strategy">거래 전략</Label>
+        <div className="space-y-1">
+          <Label>매수/매도</Label>
+          <Select
+            value={formData.type}
+            onValueChange={(v) => handleChange("type", v as "매수" | "매도")}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="선택" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="매수">매수</SelectItem>
+              <SelectItem value="매도">매도</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <Label htmlFor="strategy">전략</Label>
           <Input
             id="strategy"
-            type="text"
+            placeholder="예: 추세 돌파, 되돌림 진입 등"
             value={formData.strategy}
-            onChange={(e) => setFormData({ ...formData, strategy: e.target.value })}
-            placeholder="예: 골든 크로스, 지지선 돌파 등"
+            onChange={(e) => handleChange("strategy", e.target.value)}
           />
+          <p className="text-xs text-muted-foreground">전략명을 기록하면 분석이 쉬워집니다</p>
+          {errors.strategy && <p className="text-xs text-red-600 mt-1">{errors.strategy}</p>}
+        </div>
+      </div>
+
+      <Card className="p-4 md:p-5">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="entryPrice">진입가</Label>
+            <Input
+              id="entryPrice"
+              inputMode="decimal"
+              value={formData.entryPrice}
+              onChange={(e) => handleChange("entryPrice", toNumber(e.target.value))}
+            />
+            {errors.entryPrice && <p className="text-xs text-red-600 mt-1">{errors.entryPrice}</p>}
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="exitPrice">청산가</Label>
+            <Input
+              id="exitPrice"
+              inputMode="decimal"
+              value={formData.exitPrice}
+              onChange={(e) => handleChange("exitPrice", toNumber(e.target.value))}
+            />
+            {errors.exitPrice && <p className="text-xs text-red-600 mt-1">{errors.exitPrice}</p>}
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="quantity">수량</Label>
+            <Input
+              id="quantity"
+              inputMode="numeric"
+              value={formData.quantity}
+              onChange={(e) => handleChange("quantity", toNumber(e.target.value))}
+            />
+            {errors.quantity && <p className="text-xs text-red-600 mt-1">{errors.quantity}</p>}
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="fee">수수료</Label>
+            <Input
+              id="fee"
+              inputMode="decimal"
+              value={formData.fee}
+              onChange={(e) => handleChange("fee", toNumber(e.target.value))}
+            />
+          </div>
         </div>
 
-        {/* 메모 */}
-        <div className="space-y-2">
-          <Label htmlFor="memo">메모</Label>
-          <Textarea
-            id="memo"
-            value={formData.memo}
-            onChange={(e) => setFormData({ ...formData, memo: e.target.value })}
-            placeholder="거래 상황, 심리 상태, 시장 분석 등을 기록하세요"
-            rows={4}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          <div className="space-y-1">
+            <Label>예상 손익</Label>
+            <div className="h-10 px-3 rounded-md border bg-muted/30 flex items-center text-sm">
+              {calculateProfitLoss().toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">현재 값 기준 예상 손익입니다</p>
+          </div>
         </div>
+      </Card>
 
-        {/* Trading Rules Checklist */}
-        <div className="space-y-2">
-          <Label>트레이딩 규칙 체크리스트</Label>
-          <TradingRulesChecklist
-            checklist={formData.checklist}
-            onChange={(checklist) => setFormData({ ...formData, checklist })}
-          />
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="memo">메모</Label>
+        <Textarea
+          id="memo"
+          rows={4}
+          placeholder="트레이드 메모를 입력하세요"
+          value={formData.memo}
+          onChange={(e) => handleChange("memo", e.target.value)}
+        />
+      </div>
 
-        {/* Submit Buttons */}
-        <div className="flex gap-3">
-          <Button type="submit" className="flex-1 bg-amber-600 hover:bg-amber-700">
-            <Plus className="w-4 h-4 mr-2" />
-            {initialData ? "수정하기" : "거래 기록 추가"}
+      <Card className="p-4 md:p-5">
+        <TradingRulesChecklist
+          value={formData.checklist}
+          onChange={(v: ChecklistItems) => handleChange("checklist", v)}
+        />
+      </Card>
+
+      <div className="flex items-center justify-end gap-2">
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
+            취소
           </Button>
-          {onCancel && (
-            <Button type="button" variant="outline" onClick={onCancel}>
-              취소
-            </Button>
-          )}
-        </div>
-      </form>
-    </Card>
+        )}
+        <Button type="submit" disabled={submitting}>
+          {submitting ? "저장 중..." : initialData ? "수정 저장" : "저장"}
+        </Button>
+      </div>
+    </form>
   );
 }
